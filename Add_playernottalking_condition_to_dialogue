@@ -1,0 +1,74 @@
+{
+  Purpose: Add IsTalking condition to all INFO records, including nested ones
+  Game: The Elder Scrolls V: Skyrim Special Edition
+  Author: YourName
+  Version: 1.2
+}
+
+unit UserScript;
+
+function AddIsTalkingCondition(e: IInterface): boolean;
+var
+  conditions, condition, ctda: IInterface;
+  i, iLastIndex: integer;
+begin
+  Result := False;
+
+  // 确保记录为 INFO 类型
+  if Signature(e) <> 'INFO' then
+    Exit;
+
+  AddMessage('Processing: ' + FullPath(e));
+
+  // 获取或添加 Conditions 条目
+  conditions := ElementByName(e, 'Conditions');
+  if not Assigned(conditions) then
+    conditions := Add(e, 'Conditions', True);
+
+  // 添加新的 IsTalking 条件
+  condition := ElementAssign(conditions, HighInteger, nil, True);
+  ctda := ElementBySignature(condition, 'CTDA');
+
+  // 设置条件属性
+  SetEditValue(ElementByPath(ctda, 'Type'), '10000000');  // Equal to
+  SetEditValue(ElementByPath(ctda, 'Comparison Value - Float'), '0.000000');
+  SetEditValue(ElementByPath(ctda, 'Function'), 'IsTalking');
+  SetEditValue(ElementByPath(ctda, 'Run On'), 'Reference');
+  SetEditValue(ElementByPath(ctda, 'Reference'), 'PlayerRef [PLYR:00000014]');
+
+  AddMessage('Added "IsTalking" condition to: ' + FullPath(e));
+  Result := True;
+end;
+
+procedure RecursiveProcess(e: IInterface);
+var
+  i: Integer;
+  child: IInterface;
+begin
+  // 如果当前记录是 INFO，则尝试添加条件
+  if Signature(e) = 'INFO' then
+    AddIsTalkingCondition(e);
+
+  // 遍历所有子元素，递归调用
+  for i := 0 to Pred(ElementCount(e)) do
+  begin
+    child := ElementByIndex(e, i);
+    RecursiveProcess(child);
+  end;
+end;
+
+function Process(e: IInterface): integer;
+begin
+  Result := 0;
+
+  // 开始递归处理选中的条目
+  RecursiveProcess(e);
+end;
+
+function Finalize: integer;
+begin
+  AddMessage('Script finished processing all selected records.');
+  Result := 0;
+end;
+
+end.
